@@ -4,6 +4,24 @@ import pathlib
 import sys
 from functools import partial as bind
 
+# wandb_key.txt 파일이 존재하면 읽어서 환경변수로 자동 설정
+try:
+  with open('wandb_key.txt', 'r') as f:
+    os.environ['WANDB_API_KEY'] = f.read().strip()
+except FileNotFoundError:
+  pass
+
+import wandb
+_orig_wandb_video = wandb.Video
+def _wandb_video_wrapper(data, *args, **kwargs):
+  import numpy as np
+  data = np.array(data)
+  # If data is (T, C, H, W) and C=1, repeat to make it C=3
+  if data.ndim == 4 and data.shape[1] == 1:
+    data = np.repeat(data, 3, axis=1)
+  return _orig_wandb_video(data, *args, **kwargs)
+wandb.Video = _wandb_video_wrapper
+
 folder = pathlib.Path(__file__).parent
 sys.path.insert(0, str(folder.parent))
 sys.path.insert(1, str(folder.parent.parent))
