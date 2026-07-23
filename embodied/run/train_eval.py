@@ -155,4 +155,7 @@ def train_eval(
     if should_save(step):
       cp.save()
 
+  cp.save()
   logger.close()
+  driver_train.close()
+  driver_eval.close()
