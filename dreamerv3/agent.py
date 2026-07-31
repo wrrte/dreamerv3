@@ -306,63 +306,6 @@ class Agent(embodied.jax.Agent):
       grid = video.transpose((1, 2, 0, 3, 4)).reshape((T, H, B * W, C))
       metrics[f'openloop/{key}'] = grid
 
-    # Probing Images Reconstructions
-    try:
-      import pathlib
-      from PIL import Image
-      game_name = self.config.task.split('_')[-1]
-      probing_dir = pathlib.Path('/home/jovyan/dowser-lora-datavol-1/choemj/dreamerv3/Probing_Images') / game_name
-      if probing_dir.exists():
-        img_paths = sorted(list(probing_dir.rglob('*.png')))
-        if img_paths:
-          # Pick up to 6 images (evenly spaced to get variety)
-          num_imgs = min(6, len(img_paths))
-          indices = np.linspace(0, len(img_paths) - 1, num_imgs, dtype=int)
-          sampled_paths = [img_paths[i] for i in indices]
-          
-          imgs = []
-          img_shape = obs['image'].shape[2:4] # (H, W)
-          for p in sampled_paths:
-            with Image.open(p) as f:
-              img = np.array(f.convert('RGB').resize((img_shape[1], img_shape[0])))
-              imgs.append(img)
-          
-          imgs = np.stack(imgs) # (B, H, W, C)
-          prob_obs = {k: jnp.zeros((num_imgs, 1, *v.shape[2:]), v.dtype) for k, v in obs.items()}
-          prob_obs['image'] = jnp.array(imgs)[:, None, ...]
-          prob_reset = jnp.zeros((num_imgs, 1), dtype=bool)
-          prob_prevact = {k: jnp.zeros((num_imgs, 1, *v.shape[2:]), v.dtype) for k, v in prevact.items()}
-          
-          prob_enc_carry = self.enc.initial(num_imgs)
-          prob_dyn_carry = self.dyn.initial(num_imgs)
-          prob_dec_carry = self.dec.initial(num_imgs)
-          
-          _, _, prob_tokens = self.enc(prob_enc_carry, prob_obs, prob_reset, training=False)
-          _, _, prob_obsfeat = self.dyn.observe(prob_dyn_carry, prob_tokens, prob_prevact, prob_reset, training=False)
-          _, _, prob_recons = self.dec(prob_dec_carry, prob_obsfeat, prob_reset, training=False)
-          
-          prob_pred = prob_recons['image'].pred()
-          prob_pred = jnp.clip(prob_pred * 255, 0, 255).astype(jnp.uint8)
-          prob_true = prob_obs['image']
-          
-          # Side by side: [True, Pred]
-          prob_video = jnp.concatenate([prob_true, prob_pred], 3) # (B, 1, H, W*2, C)
-          
-          # Pad each side-by-side pair slightly for better visualization
-          prob_video = jnp.pad(prob_video, [[0, 0], [0, 0], [2, 2], [2, 2], [0, 0]])
-          
-          PB, PT, PH, PW, PC = prob_video.shape
-          # Arrange into a 3D grid: concatenate along width
-          prob_grid = prob_video.transpose((1, 2, 0, 3, 4)).reshape((PH, PB * PW, PC))
-          
-          metrics['probing/reconstruction'] = prob_grid
-          metrics['probing/reconstruction_dummy'] = 1.0
-    except Exception as e:
-      import traceback
-      with open("/home/jovyan/dowser-lora-datavol-1/choemj/dreamerv3/probing_error.log", "w") as f:
-        f.write(traceback.format_exc())
-      print(f"Failed to log probing images: {e}")
-
     carry = (*new_carry, {k: data[k][:, -1] for k in self.act_space})
     return carry, metrics
 
