@@ -9,7 +9,7 @@ defaults:
   script: train
   batch_size: 16
   batch_length: 64
-  report_length: 32
+  report_length: 64
   consec_train: 1
   consec_report: 1
   replay_context: 1
