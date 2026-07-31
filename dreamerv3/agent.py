@@ -352,9 +352,11 @@ class Agent(embodied.jax.Agent):
           prob_video = jnp.pad(prob_video, [[0, 0], [0, 0], [2, 2], [2, 2], [0, 0]])
           
           PB, PT, PH, PW, PC = prob_video.shape
-          # Arrange into a grid: concatenate along width
-          prob_grid = prob_video.transpose((1, 2, 0, 3, 4)).reshape((PT, PH, PB * PW, PC))
+          # Arrange into a 3D grid: concatenate along width
+          prob_grid = prob_video.transpose((1, 2, 0, 3, 4)).reshape((PH, PB * PW, PC))
+          
           metrics['probing/reconstruction'] = prob_grid
+          metrics['probing/reconstruction_dummy'] = 1.0
     except Exception as e:
       import traceback
       with open("/home/jovyan/dowser-lora-datavol-1/choemj/dreamerv3/probing_error.log", "w") as f:
