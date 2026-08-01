@@ -319,15 +319,16 @@ class Agent(embodied.jax.Agent):
           print(f'Skipping gradnorm summary for missing loss: {key}')
 
     # Open loop
-    firsthalf = lambda xs: jax.tree.map(lambda x: x[:RB, :T // 2], xs)
-    secondhalf = lambda xs: jax.tree.map(lambda x: x[:RB, T // 2:], xs)
+    CTX = max(1, T - self.config.imag_length)
+    firsthalf = lambda xs: jax.tree.map(lambda x: x[:RB, :CTX], xs)
+    secondhalf = lambda xs: jax.tree.map(lambda x: x[:RB, CTX:], xs)
     dyn_carry = jax.tree.map(lambda x: x[:RB], dyn_carry)
     dec_carry = jax.tree.map(lambda x: x[:RB], dec_carry)
     dyn_carry, _, obsfeat = self.dyn.observe(
         dyn_carry, firsthalf(outs['tokens']), firsthalf(prevact),
         firsthalf(obs['is_first']), training=False)
     _, imgfeat, _ = self.dyn.imagine(
-        dyn_carry, secondhalf(prevact), length=T - T // 2, training=False)
+        dyn_carry, secondhalf(prevact), length=T - CTX, training=False)
     dec_carry, _, obsrecons = self.dec(
         dec_carry, obsfeat, firsthalf(obs['is_first']), training=False)
     dec_carry, _, imgrecons = self.dec(
@@ -346,7 +347,7 @@ class Agent(embodied.jax.Agent):
       video = jnp.pad(video, [[0, 0], [0, 0], [2, 2], [2, 2], [0, 0]])
       mask = jnp.zeros(video.shape, bool).at[:, :, 2:-2, 2:-2, :].set(True)
       border = jnp.full((T, 3), jnp.array([0, 255, 0]), jnp.uint8)
-      border = border.at[T // 2:].set(jnp.array([255, 0, 0], jnp.uint8))
+      border = border.at[CTX:].set(jnp.array([255, 0, 0], jnp.uint8))
       video = jnp.where(mask, video, border[None, :, None, None, :])
       video = jnp.concatenate([video, 0 * video[:, :10]], 1)
 
