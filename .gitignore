@@ -8,3 +8,4 @@ MUJOCO_LOG.TXT
 venv/
 wandb_key.txt
 wandb/
+play_video/

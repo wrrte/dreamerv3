@@ -197,7 +197,12 @@ def parallel_learner(agent, barrier, args):
     if should_report(skip=not received['report']):
       print('Report started...')
       with elements.timer.section('report'):
-        logger.add(prefix(evaluate(stream_report), 'report'))
+        mets = evaluate(stream_report)
+        probe_mets = {k: v for k, v in mets.items() if k.startswith('probe_')}
+        report_mets = {k: v for k, v in mets.items() if not k.startswith('probe_')}
+        logger.add(prefix(report_mets, 'report'))
+        if probe_mets:
+          logger.add(prefix(probe_mets, 'probe'))
         if args.eval_envs and received['eval']:
           logger.add(prefix(evaluate(stream_eval), 'eval'))
       print('Report finished!')

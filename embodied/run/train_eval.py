@@ -135,7 +135,11 @@ def train_eval(
       logger.add(eval_epstats.result(), prefix='epstats')
       if len(replay_train):
         carry_report, mets = reportfn(carry_report, stream_report)
-        logger.add(mets, prefix='report')
+        probe_mets = {k: v for k, v in mets.items() if k.startswith('probe_')}
+        report_mets = {k: v for k, v in mets.items() if not k.startswith('probe_')}
+        logger.add(report_mets, prefix='report')
+        if probe_mets:
+          logger.add(probe_mets, prefix='probe')
       if len(replay_eval):
         carry_eval, mets = reportfn(carry_eval, stream_eval)
         logger.add(mets, prefix='eval')

@@ -101,7 +101,13 @@ def train(make_agent, make_replay, make_env, make_stream, make_logger, args):
       for _ in range(args.consec_report * args.report_batches):
         carry_report, mets = agent.report(carry_report, next(stream_report))
         agg.add(mets)
-      logger.add(agg.result(), prefix='report')
+      
+      mets = agg.result()
+      probe_mets = {k: v for k, v in mets.items() if k.startswith('probe_')}
+      report_mets = {k: v for k, v in mets.items() if not k.startswith('probe_')}
+      logger.add(report_mets, prefix='report')
+      if probe_mets:
+        logger.add(probe_mets, prefix='probe')
 
     if should_log(step):
       logger.add(train_agg.result())

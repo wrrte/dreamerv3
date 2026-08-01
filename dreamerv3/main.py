@@ -167,6 +167,36 @@ def make_agent(config):
   ))
 
 
+class LocalVideoMP4Output:
+  def __init__(self, base_dir, run_name, fps=20):
+    import pathlib
+    self._dir = pathlib.Path(base_dir) / run_name
+    self._dir.mkdir(parents=True, exist_ok=True)
+    self._fps = fps
+
+  def __call__(self, summaries):
+    import imageio
+    import numpy as np
+    for step, name, value in summaries:
+      if name in ('report/openloop/image', 'epstats/policy_image'):
+        if len(value.shape) == 4:
+          vid = value
+          if vid.shape[-1] not in [1, 3, 4] and vid.shape[1] in [1, 3, 4]:
+             vid = np.transpose(vid, [0, 2, 3, 1])
+          if vid.dtype != np.uint8:
+            vid = (255 * np.clip(vid, 0, 1)).astype(np.uint8)
+          
+          scale = max(1, 512 // vid.shape[1])
+          if scale > 1:
+            vid = np.repeat(np.repeat(vid, scale, axis=1), scale, axis=2)
+          
+          safe_name = name.replace('/', '_')
+          filename = self._dir / f"{step}_{safe_name}.mp4"
+          try:
+            imageio.mimsave(str(filename), vid, fps=self._fps, macro_block_size=1, quality=10, ffmpeg_params=['-pix_fmt', 'yuv444p'])
+          except Exception as e:
+            print(f"Failed to save video: {e}")
+
 def make_logger(config):
   step = elements.Counter()
   logdir = config.logdir
@@ -194,6 +224,11 @@ def make_logger(config):
       outputs.append(elements.logger.ScopeOutput(elements.Path(logdir)))
     else:
       raise NotImplementedError(output)
+      
+  # Add LocalVideoMP4Output
+  run_name = logdir.split('/')[-1] if logdir else 'default_run'
+  outputs.append(LocalVideoMP4Output('/home/jovyan/dowser-lora-datavol-1/choemj/dreamerv3/play_video', run_name, config.logger.fps))
+  
   logger = elements.Logger(step, outputs, multiplier)
   return logger
 
