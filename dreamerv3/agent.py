@@ -275,8 +275,17 @@ class Agent(embodied.jax.Agent):
 
     assert set(losses.keys()) == set(self.scales.keys()), (
         sorted(losses.keys()), sorted(self.scales.keys()))
-    metrics.update({f'loss/{k}': v.mean() for k, v in losses.items()})
+    wm_keys = {'rec', 'rew', 'con', 'dyn', 'rep'}
+    ac_keys = {'policy', 'value', 'repval'}
+    for k, v in losses.items():
+      if k in wm_keys:
+        metrics[f'WorldModel/{k}'] = v.mean()
+      elif k in ac_keys:
+        metrics[f'ActorCritic/{k}'] = v.mean()
+      else:
+        metrics[f'loss/{k}'] = v.mean()
     loss = sum([v.mean() * self.scales[k] for k, v in losses.items()])
+    metrics['loss/total'] = loss
 
     carry = (enc_carry, dyn_carry, dec_carry)
     entries = (enc_entries, dyn_entries, dec_entries)

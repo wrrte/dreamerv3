@@ -199,6 +199,20 @@ class LocalVideoMP4Output:
           except Exception as e:
             print(f"Failed to save video: {e}")
 
+class WandBOutputWrapper:
+  def __init__(self, name):
+    self._output = elements.logger.WandBOutput(name)
+  def __call__(self, summaries):
+    new_summaries = {}
+    for k, v in summaries.items():
+      if k.startswith('train/WorldModel/'):
+        new_summaries[k.replace('train/WorldModel/', 'WorldModel/', 1)] = v
+      elif k.startswith('train/ActorCritic/'):
+        new_summaries[k.replace('train/ActorCritic/', 'ActorCritic/', 1)] = v
+      else:
+        new_summaries[k] = v
+    self._output(new_summaries)
+
 def make_logger(config):
   step = elements.Counter()
   logdir = config.logdir
@@ -221,7 +235,7 @@ def make_logger(config):
           exp, run, proj, config.logger.user, config.flat))
     elif output == 'wandb':
       name = '/'.join(logdir.split('/')[-4:])
-      outputs.append(elements.logger.WandBOutput(name))
+      outputs.append(WandBOutputWrapper(name))
     elif output == 'scope':
       outputs.append(elements.logger.ScopeOutput(elements.Path(logdir)))
     else:
