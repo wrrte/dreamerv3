@@ -19,6 +19,8 @@ def _wandb_video_wrapper(data, *args, **kwargs):
   # If data is (T, C, H, W) and C=1, repeat to make it C=3
   if data.ndim == 4 and data.shape[1] == 1:
     data = np.repeat(data, 3, axis=1)
+  if 'format' not in kwargs:
+    kwargs['format'] = 'mp4'
   return _orig_wandb_video(data, *args, **kwargs)
 wandb.Video = _wandb_video_wrapper
 
@@ -193,7 +195,7 @@ class LocalVideoMP4Output:
           safe_name = name.replace('/', '_')
           filename = self._dir / f"{step}_{safe_name}.mp4"
           try:
-            imageio.mimsave(str(filename), vid, fps=self._fps, macro_block_size=1, quality=10, ffmpeg_params=['-pix_fmt', 'yuv444p'])
+            imageio.mimsave(str(filename), vid, fps=self._fps, macro_block_size=1, quality=10, pixelformat='yuv444p')
           except Exception as e:
             print(f"Failed to save video: {e}")
 
