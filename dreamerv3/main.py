@@ -200,8 +200,20 @@ class LocalVideoMP4Output:
             print(f"Failed to save video: {e}")
 
 class WandBOutputWrapper:
-  def __init__(self, name):
+  def __init__(self, name, config=None):
     self._output = elements.logger.WandBOutput(name)
+    if config is not None:
+      import wandb
+      if wandb.run is not None:
+        try:
+          wandb.config.update(dict(config), allow_val_change=True)
+          import pathlib
+          yaml_path = pathlib.Path(__file__).parent / 'configs.yaml'
+          if yaml_path.exists():
+            with open(yaml_path, 'r') as f:
+              wandb.config.update({'configs.yaml': f.read()}, allow_val_change=True)
+        except Exception as e:
+          print(f'Failed to update wandb config: {e}')
   def __call__(self, summaries):
     new_summaries = []
     for step, name, value in summaries:
@@ -235,7 +247,7 @@ def make_logger(config):
           exp, run, proj, config.logger.user, config.flat))
     elif output == 'wandb':
       name = '/'.join(logdir.split('/')[-4:])
-      outputs.append(WandBOutputWrapper(name))
+      outputs.append(WandBOutputWrapper(name, config))
     elif output == 'scope':
       outputs.append(elements.logger.ScopeOutput(elements.Path(logdir)))
     else:

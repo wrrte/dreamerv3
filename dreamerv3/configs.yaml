@@ -117,8 +117,8 @@ defaults:
     report: True
     report_gradnorms: False
     special_events: {
-      windows: "[[], []]", # [[value 변화], [termination]] 의 temporal window
-      weights: "1.5", 
+      windows: "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20,-5,-4,-3,-2,-1,0]]", # [[value 변화], [termination]] 의 temporal window
+      weights: "1.2", 
       value_z: 3.0, 
       value_ema_rate: 0.01}
 
