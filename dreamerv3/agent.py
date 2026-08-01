@@ -1,4 +1,5 @@
 import re
+import ast
 
 import chex
 import elements
@@ -81,6 +82,18 @@ class Agent(embodied.jax.Agent):
     rec = scales.pop('rec')
     scales.update({k: rec for k in dec_space})
     self.scales = scales
+
+    if hasattr(self.config, 'special_events'):
+      self.vd_mean = nj.Variable(jnp.zeros, (), f32, name='vd_mean')
+      self.vd_sqrs = nj.Variable(jnp.zeros, (), f32, name='vd_sqrs')
+      
+      windows_cfg = self.config.special_events.windows
+      weights_cfg = self.config.special_events.weights
+      windows = ast.literal_eval(windows_cfg) if isinstance(windows_cfg, str) else windows_cfg
+      weights = ast.literal_eval(weights_cfg) if isinstance(weights_cfg, str) else weights_cfg
+      
+      self.parsed_event_windows = windows
+      self.parsed_event_weights = self._parse_event_weights(windows, weights)
 
   @property
   def policy_keys(self):
@@ -175,11 +188,37 @@ class Agent(embodied.jax.Agent):
     if self.config.contdisc:
       con *= 1 - 1 / self.config.horizon
     losses['con'] = self.con(self.feat2tensor(repfeat), 2).loss(con)
+    
+    # ==== Special Events Processing ====
+    weight_mask = jnp.ones((B, T), dtype=f32)
+    if hasattr(self.config, 'special_events'):
+      val_pred = self.val(self.feat2tensor(sg(repfeat)), 2).pred()
+      val_diff = jnp.concatenate([jnp.zeros_like(val_pred[:, :1]), val_pred[:, 1:] - val_pred[:, :-1]], axis=1)
+
+      if training:
+        ema_rate = self.config.special_events.value_ema_rate
+        batch_mean = val_diff.mean()
+        batch_sqrs = jnp.square(val_diff).mean()
+        self.vd_mean.write((1 - ema_rate) * self.vd_mean.read() + ema_rate * batch_mean)
+        self.vd_sqrs.write((1 - ema_rate) * self.vd_sqrs.read() + ema_rate * batch_sqrs)
+
+      mean = self.vd_mean.read()
+      std = jnp.sqrt(jax.nn.relu(self.vd_sqrs.read() - mean**2))
+      std = jnp.maximum(1e-8, std)
+      is_value_jump = val_diff > (mean + self.config.special_events.value_z * std)
+      is_term = obs['is_terminal']
+      
+      weight_mask = self._compute_weight_mask(
+          [is_value_jump, is_term],
+          self.parsed_event_windows,
+          self.parsed_event_weights)
+    # ===================================
+
     for key, recon in recons.items():
       space, value = self.obs_space[key], obs[key]
       assert value.dtype == space.dtype, (key, space, value.dtype)
       target = f32(value) / 255 if isimage(space) else value
-      losses[key] = recon.loss(sg(target))
+      losses[key] = recon.loss(sg(target)) * sg(weight_mask)
 
     B, T = reset.shape
     shapes = {k: v.shape for k, v in losses.items()}
@@ -342,6 +381,48 @@ class Agent(embodied.jax.Agent):
         (carry, rhs(obs), rhs(prevact), rhs(stepid)),
         (rep_carry, rep_obs, rep_prevact, rep_stepid))
     return carry, obs, prevact, stepid
+
+  def _parse_event_weights(self, windows, weights):
+    if isinstance(weights, (int, float)):
+      return [tuple(weights for _ in win) for win in windows]
+    elif isinstance(weights, list) or isinstance(weights, tuple):
+      if len(weights) != len(windows):
+        raise ValueError("Length of weights must match length of windows.")
+      parsed = []
+      for win, w in zip(windows, weights):
+        if isinstance(w, (int, float)):
+          parsed.append(tuple(float(w) for _ in win))
+        elif isinstance(w, list) or isinstance(w, tuple):
+          if len(w) != len(win):
+            raise ValueError(f"Weight list {w} must match window {win} length.")
+          parsed.append(tuple(float(x) for x in w))
+        else:
+          raise ValueError(f"Invalid weight type {type(w)} in {weights}.")
+      return parsed
+    else:
+      raise ValueError(f"Invalid weights type {type(weights)}.")
+
+  def _compute_weight_mask(self, masks, windows, parsed_weights):
+    B, T = masks[0].shape
+    combined_weight = jnp.ones((B, T), dtype=f32)
+    for mask, win, wts in zip(masks, windows, parsed_weights):
+      for w, v in zip(win, wts):
+        if w < 0:
+          shift = -w
+          if shift < T:
+            shifted = jnp.pad(mask[:, shift:], ((0, 0), (0, shift)), constant_values=False)
+          else:
+            shifted = jnp.zeros_like(mask)
+        elif w > 0:
+          shift = w
+          if shift < T:
+            shifted = jnp.pad(mask[:, :-shift], ((0, 0), (shift, 0)), constant_values=False)
+          else:
+            shifted = jnp.zeros_like(mask)
+        else:
+          shifted = mask
+        combined_weight = jnp.maximum(combined_weight, jnp.where(shifted, v, 1.0))
+    return combined_weight
 
   def _make_opt(
       self,
