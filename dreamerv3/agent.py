@@ -306,6 +306,10 @@ class Agent(embodied.jax.Agent):
       grid = video.transpose((1, 2, 0, 3, 4)).reshape((T, H, B * W, C))
       metrics[f'openloop/{key}'] = grid
 
+    # Evaluate Probing Images
+    from .probing import run_probing
+    metrics.update(run_probing(self))
+
     carry = (*new_carry, {k: data[k][:, -1] for k in self.act_space})
     return carry, metrics
 
