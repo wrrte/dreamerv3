@@ -188,7 +188,7 @@ class LocalVideoMP4Output:
           if vid.dtype != np.uint8:
             vid = (255 * np.clip(vid, 0, 1)).astype(np.uint8)
           
-          scale = max(1, 512 // vid.shape[1])
+          scale = max(1, int(round(512 / vid.shape[1])))
           if scale > 1:
             vid = np.repeat(np.repeat(vid, scale, axis=1), scale, axis=2)
           
@@ -203,15 +203,15 @@ class WandBOutputWrapper:
   def __init__(self, name):
     self._output = elements.logger.WandBOutput(name)
   def __call__(self, summaries):
-    new_summaries = {}
-    for k, v in summaries.items():
-      if k.startswith('train/WorldModel/'):
-        new_summaries[k.replace('train/WorldModel/', 'WorldModel/', 1)] = v
-      elif k.startswith('train/ActorCritic/'):
-        new_summaries[k.replace('train/ActorCritic/', 'ActorCritic/', 1)] = v
+    new_summaries = []
+    for step, name, value in summaries:
+      if name.startswith('train/WorldModel/'):
+        new_summaries.append((step, name.replace('train/WorldModel/', 'WorldModel/', 1), value))
+      elif name.startswith('train/ActorCritic/'):
+        new_summaries.append((step, name.replace('train/ActorCritic/', 'ActorCritic/', 1), value))
       else:
-        new_summaries[k] = v
-    self._output(new_summaries)
+        new_summaries.append((step, name, value))
+    self._output(tuple(new_summaries))
 
 def make_logger(config):
   step = elements.Counter()

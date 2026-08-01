@@ -7,6 +7,14 @@ python dreamerv3/main.py \
   --logger.outputs jsonl,scope,wandb \
   --run.steps 100000
 
+
+python dreamerv3/main.py \
+  --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
+  --configs atari100k \
+  --task atari100k_seaquest \
+  --logger.outputs jsonl,scope,wandb \
+  --run.steps 100000
+
 python dreamerv3/main.py \
   --logdir ~/logdir/dreamer/hero_$(date +%Y%m%d_%H%M%S) \
   --configs atari100k \
