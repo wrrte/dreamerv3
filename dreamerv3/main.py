@@ -198,7 +198,7 @@ def annotate_video_with_time(step, name, value):
     H, W = H * scale, W * scale
 
   try:
-    font = ImageFont.truetype("arial.ttf", 30)
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
   except:
     font = ImageFont.load_default()
 
@@ -214,12 +214,21 @@ def annotate_video_with_time(step, name, value):
       draw.text((W // 2 - 30, 10), f"T={t}", fill=(255, 255, 255), font=font)
       annotated.append(np.array(img))
     elif name == 'epstats/policy_image':
-      pad = 120
+      pad = 140
       new_frame = np.zeros((H, W + pad, C), dtype=np.uint8)
       new_frame[:, :W, :] = frame
       img = Image.fromarray(new_frame)
       draw = ImageDraw.Draw(img)
-      draw.text((W + 15, H // 2 - 15), f"T={t}", fill=(255, 255, 255), font=font)
+      
+      text = f"T={t}"
+      import builtins
+      rewards = getattr(builtins, 'last_epstats_rewards', None)
+      if rewards is not None and t < len(rewards):
+        cur_r = float(rewards[t])
+        sum_r = float(np.sum(rewards[:t+1]))
+        text += f"\n\nRew:\n{cur_r:+.2f}\n\nSum:\n{sum_r:+.2f}"
+      
+      draw.text((W + 10, H // 2 - 50), text, fill=(255, 255, 255), font=font)
       annotated.append(np.array(img))
       
   res = np.stack(annotated)

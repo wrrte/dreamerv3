@@ -50,6 +50,8 @@ def train(make_agent, make_replay, make_env, make_stream, make_logger, args):
           'length': result.pop('length'),
       }, prefix='episode')
       rew = result.pop('rewards')
+      import builtins
+      builtins.last_epstats_rewards = rew
       if len(rew) > 1:
         result['reward_rate'] = (np.abs(rew[1:] - rew[:-1]) >= 0.01).mean()
       epstats.add(result)
