@@ -6,8 +6,8 @@ python dreamerv3/main.py \
   --task atari100k_seaquest \
   --logger.outputs jsonl,scope,wandb \
   --run.steps 100000 \
-  --agent.special_events.windows "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20]]" \
-  --agent.special_events.weights "2.0"
+  --agent.special_events.weights "1.1" \
+  --agent.dec.simple.loss l1
 
 python dreamerv3/main.py \
   --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
@@ -15,8 +15,8 @@ python dreamerv3/main.py \
   --task atari100k_seaquest \
   --logger.outputs jsonl,scope,wandb \
   --run.steps 100000 \
-  --agent.special_events.windows "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20]]" \
-  --agent.special_events.weights "1.5"
+  --agent.special_events.weights "1.1" \
+  --agent.dec.simple.loss mse
 
 python dreamerv3/main.py \
   --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
@@ -24,8 +24,8 @@ python dreamerv3/main.py \
   --task atari100k_seaquest \
   --logger.outputs jsonl,scope,wandb \
   --run.steps 100000 \
-  --agent.special_events.windows "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20]]" \
-  --agent.special_events.weights "1.25"
+  --agent.special_events.weights "1.05" \
+  --agent.dec.simple.loss l1
 
 python dreamerv3/main.py \
   --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
@@ -33,17 +33,8 @@ python dreamerv3/main.py \
   --task atari100k_seaquest \
   --logger.outputs jsonl,scope,wandb \
   --run.steps 100000 \
-  --agent.special_events.windows "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20]]" \
-  --agent.special_events.weights "1.1"
-
-python dreamerv3/main.py \
-  --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
-  --configs atari100k \
-  --task atari100k_seaquest \
-  --logger.outputs jsonl,scope,wandb \
-  --run.steps 100000 \
-  --agent.special_events.windows "[[], [-29,-28,-27,-26,-25,-24,-23,-22,-21,-20]]" \
-  --agent.special_events.weights "1.05"
+  --agent.special_events.weights "1.05" \
+  --agent.dec.simple.loss mse
 
 
 

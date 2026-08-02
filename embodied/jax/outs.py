@@ -141,6 +141,21 @@ class MSE(Output):
     return jnp.square(self.mean - sg(self.squash(f32(target))))
 
 
+class L1(Output):
+
+  def __init__(self, mean, squash=None):
+    self.mean = f32(mean)
+    self.squash = squash or (lambda x: x)
+
+  def pred(self):
+    return self.mean
+
+  def loss(self, target):
+    assert jnp.issubdtype(target.dtype, jnp.floating), target.dtype
+    assert self.mean.shape == target.shape, (self.mean.shape, target.shape)
+    return jnp.abs(self.mean - sg(self.squash(f32(target))))
+
+
 class Huber(Output):
 
   def __init__(self, mean, eps=1.0):

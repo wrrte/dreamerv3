@@ -264,6 +264,7 @@ class Decoder(nj.Module):
   bspace: int = 8
   outer: bool = False
   strided: bool = False
+  loss: str = 'mse'
 
   def __init__(self, obs_space, **kw):
     assert all(len(s.shape) <= 3 for s in obs_space.values()), obs_space
@@ -351,7 +352,10 @@ class Decoder(nj.Module):
       split = np.cumsum(
           [self.obs_space[k].shape[-1] for k in self.imgkeys][:-1])
       for k, out in zip(self.imgkeys, jnp.split(x, split, -1)):
-        out = embodied.jax.outs.MSE(out)
+        if self.loss == 'l1':
+          out = embodied.jax.outs.L1(out)
+        else:
+          out = embodied.jax.outs.MSE(out)
         out = embodied.jax.outs.Agg(out, 3, jnp.sum)
         recons[k] = out
 

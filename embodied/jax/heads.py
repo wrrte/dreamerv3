@@ -119,6 +119,11 @@ class Head(nj.Module):
     pred = self.sub('pred', nets.Linear, self.space.shape, **self.kw)(x)
     return outs.MSE(pred)
 
+  def l1(self, x):
+    assert not self.space.discrete
+    pred = self.sub('pred', nets.Linear, self.space.shape, **self.kw)(x)
+    return outs.L1(pred)
+
   def huber(self, x):
     assert not self.space.discrete
     pred = self.sub('pred', nets.Linear, self.space.shape, **self.kw)(x)
