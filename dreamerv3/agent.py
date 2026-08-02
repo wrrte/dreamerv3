@@ -218,7 +218,10 @@ class Agent(embodied.jax.Agent):
       space, value = self.obs_space[key], obs[key]
       assert value.dtype == space.dtype, (key, space, value.dtype)
       target = f32(value) / 255 if isimage(space) else value
-      losses[key] = recon.loss(sg(target)) * sg(weight_mask)
+      unweighted_loss = recon.loss(sg(target))
+      losses[key] = unweighted_loss * sg(weight_mask)
+      metrics[f'WorldModel/{key}_unweighted'] = unweighted_loss.mean()
+      metrics[f'WorldModel/weight_mask'] = weight_mask.mean()
 
     B, T = reset.shape
     shapes = {k: v.shape for k, v in losses.items()}
@@ -275,7 +278,7 @@ class Agent(embodied.jax.Agent):
 
     assert set(losses.keys()) == set(self.scales.keys()), (
         sorted(losses.keys()), sorted(self.scales.keys()))
-    wm_keys = {'rec', 'rew', 'con', 'dyn', 'rep'}
+    wm_keys = {'rew', 'con', 'dyn', 'rep'} | set(recons.keys())
     ac_keys = {'policy', 'value', 'repval'}
     for k, v in losses.items():
       if k in wm_keys:
