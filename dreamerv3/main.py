@@ -168,6 +168,69 @@ def make_agent(config):
       replicas=config.replicas,
   ))
 
+_ANNOTATED_VIDEOS_CACHE = {}
+
+def annotate_video_with_time(step, name, value):
+  global _ANNOTATED_VIDEOS_CACHE
+  cache_key = (step, name)
+  if cache_key in _ANNOTATED_VIDEOS_CACHE:
+    return _ANNOTATED_VIDEOS_CACHE[cache_key]
+  
+  import numpy as np
+  from PIL import Image, ImageDraw, ImageFont
+
+  if len(value.shape) != 4 or value.dtype != np.uint8:
+    return value
+  
+  vid = value
+  if vid.shape[-1] not in [1, 3, 4] and vid.shape[1] in [1, 3, 4]:
+     vid = np.transpose(vid, [0, 2, 3, 1])
+  
+  T_frames, H, W, C = vid.shape
+  if C == 1:
+     vid = np.repeat(vid, 3, axis=-1)
+     C = 3
+
+  # Nearest neighbor upscale first to preserve Atari pixels exactly, while making text sharp
+  scale = max(1, int(round(512 / H)))
+  if scale > 1:
+    vid = np.repeat(np.repeat(vid, scale, axis=1), scale, axis=2)
+    H, W = H * scale, W * scale
+
+  try:
+    font = ImageFont.truetype("arial.ttf", 30)
+  except:
+    font = ImageFont.load_default()
+
+  annotated = []
+  for t in range(T_frames):
+    frame = vid[t]
+    if name == 'report/openloop/image':
+      pad = 50
+      new_frame = np.zeros((H + pad, W, C), dtype=np.uint8)
+      new_frame[pad:, :, :] = frame
+      img = Image.fromarray(new_frame)
+      draw = ImageDraw.Draw(img)
+      draw.text((W // 2 - 30, 10), f"T={t}", fill=(255, 255, 255), font=font)
+      annotated.append(np.array(img))
+    elif name == 'epstats/policy_image':
+      pad = 120
+      new_frame = np.zeros((H, W + pad, C), dtype=np.uint8)
+      new_frame[:, :W, :] = frame
+      img = Image.fromarray(new_frame)
+      draw = ImageDraw.Draw(img)
+      draw.text((W + 15, H // 2 - 15), f"T={t}", fill=(255, 255, 255), font=font)
+      annotated.append(np.array(img))
+      
+  res = np.stack(annotated)
+  _ANNOTATED_VIDEOS_CACHE[cache_key] = res
+  
+  # Clear old cache to avoid memory leak
+  keys_to_remove = [k for k in _ANNOTATED_VIDEOS_CACHE if k[0] < step - 100]
+  for k in keys_to_remove:
+    del _ANNOTATED_VIDEOS_CACHE[k]
+    
+  return res
 
 class LocalVideoMP4Output:
   def __init__(self, base_dir, run_name, fps=20):
@@ -182,6 +245,10 @@ class LocalVideoMP4Output:
     for step, name, value in summaries:
       if name in ('report/openloop/image', 'epstats/policy_image'):
         if len(value.shape) == 4:
+          try:
+            value = annotate_video_with_time(step, name, value)
+          except Exception as e:
+            print(f"Error annotating video {name}: {e}")
           vid = value
           if vid.shape[-1] not in [1, 3, 4] and vid.shape[1] in [1, 3, 4]:
              vid = np.transpose(vid, [0, 2, 3, 1])
@@ -217,6 +284,12 @@ class WandBOutputWrapper:
   def __call__(self, summaries):
     new_summaries = []
     for step, name, value in summaries:
+      if name in ('report/openloop/image', 'epstats/policy_image'):
+        try:
+          value = annotate_video_with_time(step, name, value)
+        except Exception as e:
+          print(f"Error annotating video {name}: {e}")
+      
       if name.startswith('train/WorldModel/'):
         new_summaries.append((step, name.replace('train/WorldModel/', 'WorldModel/', 1), value))
       elif name.startswith('train/ActorCritic/'):

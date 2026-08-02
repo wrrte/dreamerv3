@@ -4,3 +4,8 @@ termination도 예측함? 그렇다면 termination 때는 그 예측 loss 가중
 termination loss 가중치는 지수 형태로 하는 건 어떰? 
 termination에 가까울수록 높아지고, 에피소드 길이에 비례하여 반감기를 정하고. 
 안전을 위해 초반에는 반감기를 최대한 크게 세팅해두고 반감기는 에피소드 길이를 ema로 측정하여 갱신하고.
+
+
+
+
+일단 vae에 L1을 구현할 거임.
