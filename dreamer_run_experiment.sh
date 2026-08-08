@@ -5,36 +5,7 @@ python dreamerv3/main.py \
   --configs atari100k \
   --task atari100k_seaquest \
   --logger.outputs jsonl,scope,wandb \
-  --run.steps 100000 \
-  --agent.special_events.weights "1.1" \
-  --agent.dec.simple.loss l1
-
-python dreamerv3/main.py \
-  --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
-  --configs atari100k \
-  --task atari100k_seaquest \
-  --logger.outputs jsonl,scope,wandb \
-  --run.steps 100000 \
-  --agent.special_events.weights "1.1" \
-  --agent.dec.simple.loss mse
-
-python dreamerv3/main.py \
-  --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
-  --configs atari100k \
-  --task atari100k_seaquest \
-  --logger.outputs jsonl,scope,wandb \
-  --run.steps 100000 \
-  --agent.special_events.weights "1.05" \
-  --agent.dec.simple.loss l1
-
-python dreamerv3/main.py \
-  --logdir ~/logdir/dreamer/seaquest_$(date +%Y%m%d_%H%M%S) \
-  --configs atari100k \
-  --task atari100k_seaquest \
-  --logger.outputs jsonl,scope,wandb \
-  --run.steps 100000 \
-  --agent.special_events.weights "1.05" \
-  --agent.dec.simple.loss mse
+  --run.steps 100000
 
 
 
